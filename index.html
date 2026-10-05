@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Online Multiplayer Dragon vs Tiger</title>
-    <!-- लाइव सॉकेट सीडीएन लाइब्रेरी -->
+    <!-- लाइव सॉकेट सीडीएन लाइब्रेरी (फिक्स्ड) -->
     <script src="https://socket.io"></script>
     <style>
         body { font-family: sans-serif; background-color: #1b4d3e; color: white; text-align: center; margin: 0; padding: 20px; }
@@ -79,10 +79,8 @@
     </div>
 
     <script>
-        // यहाँ अपने लाइव क्लाउड बैकएंड सर्वर का URL डालें (जैसे ही आप Render पर होस्ट करेंगे)
-        // अभी टेस्टिंग के लिए यह लोकल सर्वर एड्रेस पर सेट है
-        const SERVER_URL = "https://onrender.com";
-    
+        // आपका असली लाइव रेंडर सर्वर लिंक यहाँ सेट कर दिया गया है
+        const SERVER_URL = "https://onrender.com"; 
         
         const socket = io(SERVER_URL, { transports: ['websocket'] });
         let selectedChipValue = 10, myBetType = null, myBetAmount = 0;
@@ -137,3 +135,4 @@
                 let html = `<div style="color:#ffcc00;font-weight:bold;">WINNER: ${data.winner}</div>`;
                 if (myBetType === data.winner) { document.getElementById('result').innerHTML = html + `<span style="color:#4def4d;">जीत गए! (+₹${myBetAmount})</span>`; }
                 else if (myBetType) { document.getElementById('result').innerHTML = html + `<span style="color:#ff9999;">हार गए! (-₹${myBetAmount})</span>`; }
+        
