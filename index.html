@@ -81,7 +81,8 @@
     <script>
         // यहाँ अपने लाइव क्लाउड बैकएंड सर्वर का URL डालें (जैसे ही आप Render पर होस्ट करेंगे)
         // अभी टेस्टिंग के लिए यह लोकल सर्वर एड्रेस पर सेट है
-        const SERVER_URL = "http://localhost:3000"; 
+        const SERVER_URL = "https://onrender.com";
+    
         
         const socket = io(SERVER_URL, { transports: ['websocket'] });
         let selectedChipValue = 10, myBetType = null, myBetAmount = 0;
