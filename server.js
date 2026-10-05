@@ -1,12 +1,25 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
 
+// CORS एरर को रोकने के लिए सॉकेट सेटिंग्स
+const io = new Server(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
+
+// सर्वर को बताना कि index.html फ़ाइल कहाँ है
 app.use(express.static(__dirname));
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 let onlinePlayers = 0;
 let playerWallets = {}; 
@@ -105,8 +118,9 @@ io.on('connection', (socket) => {
     });
 });
 
+// रेंडर क्लाउड सर्वर के लिए डायनामिक पोर्ट सेटिंग (फ़िक्स)
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-              
+                
