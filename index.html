@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Multiplayer Dragon vs Tiger</title>
+    <!-- लाइव सॉकेट सीडीएन लाइब्रेरी -->
+    <script src="https://socket.io"></script>
+    <style>
+        body { font-family: sans-serif; background-color: #1b4d3e; color: white; text-align: center; margin: 0; padding: 20px; }
+        .game-container { max-width: 500px; margin: auto; background: rgba(0, 0, 0, 0.4); padding: 20px; border-radius: 15px; position: relative; }
+        .status-bar { display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 10px; align-items: center; }
+        .wallet-box { font-size: 1.2rem; font-weight: bold; color: #4def4d; background: rgba(0,0,0,0.3); padding: 8px 15px; border-radius: 20px; }
+        .timer-box { font-size: 1.5rem; font-weight: bold; color: #ffcc00; margin: 15px 0; min-height: 36px; }
+        .board { display: flex; justify-content: space-around; margin: 20px 0; }
+        .side { width: 120px; padding: 15px; border-radius: 10px; background: #2a2a2a; border: 3px solid #ccc; }
+        #dragon-side { border-color: #ff4d4d; }
+        #tiger-side { border-color: #33ccff; }
+        .card-container { width: 90px; height: 135px; margin: 12px auto 0 auto; perspective: 1000px; }
+        .card-inner { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.6s; }
+        .card-inner.flipped { transform: rotateY(180deg); }
+        .card-front, .card-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 8px; box-sizing: border-box; }
+        .card-back { background: #b30000; border: 4px solid white; display: flex; justify-content: center; align-items: center; font-size: 2rem; color: rgba(255,255,255,0.3); }
+        .card-front { background: white; transform: rotateY(180deg); }
+        .card-front.red-suit { color: #ff0000; }
+        .card-front.black-suit { color: #000000; }
+        .card-corner { position: absolute; font-size: 0.9rem; font-weight: bold; display: flex; flex-direction: column; align-items: center; }
+        .card-corner.top-left { top: 6px; left: 6px; }
+        .card-corner.bottom-right { bottom: 6px; right: 6px; transform: rotate(180deg); }
+        .card-center-logo { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2.5rem; }
+        .bet-buttons { display: flex; justify-content: space-around; margin: 20px 0; gap: 10px; }
+        .bet-btn { flex: 1; padding: 12px; font-size: 1rem; font-weight: bold; border: 3px solid transparent; border-radius: 8px; cursor: pointer; color: white; }
+        .btn-dragon { background-color: #ff4d4d; }
+        .btn-tiger { background-color: #33ccff; color: black; }
+        .btn-tie { background-color: #ffcc00; color: black; }
+        .bet-btn.selected { border-color: #ffffff; transform: scale(1.05); }
+        .bet-btn:disabled, .chip-btn:disabled { background-color: #555 !important; color: #888 !important; cursor: not-allowed !important; border-color: transparent !important; }
+        .chips-panel { display: flex; justify-content: center; gap: 12px; margin: 15px 0; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 10px; }
+        .chip-btn { width: 45px; height: 45px; border-radius: 50%; border: 3px dashed white; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; }
+        .chip-10 { background-color: #e74c3c; color: white; }
+        .chip-50 { background-color: #3498db; color: white; }
+        .chip-100 { background-color: #2ecc71; color: white; }
+        .chip-500 { background-color: #9b59b6; color: white; }
+        .chip-btn.selected-chip { transform: scale(1.15); border-style: solid; box-shadow: 0 0 12px #ffcc00; }
+        .result-box { font-size: 1.4rem; font-weight: bold; margin-top: 20px; min-height: 70px; }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="status-bar">
+            <span id="connection-status">Connecting...</span>
+            <div class="wallet-box">💰 Balance: ₹<span id="balance">0</span></div>
+            <span id="online-players">Players: 0</span>
+        </div>
+        <h1>Dragon vs Tiger</h1>
+        <div id="timer" class="timer-box">Connecting to Server...</div>
+        <div class="board">
+            <div id="dragon-side" class="side">
+                <h2>DRAGON</h2>
+                <div class="card-container"><div id="dragon-card-inner" class="card-inner"><div class="card-back">♠</div><div id="dragon-card-front" class="card-front"></div></div></div>
+            </div>
+            <div id="tiger-side" class="side">
+                <h2>TIGER</h2>
+                <div class="card-container"><div id="tiger-card-inner" class="card-inner"><div class="card-back">♥</div><div id="tiger-card-front" class="card-front"></div></div></div>
+            </div>
+        </div>
+        <div class="bet-buttons">
+            <button class="bet-btn btn-dragon" onclick="placeBet('Dragon', this)">DRAGON</button>
+            <button class="bet-btn btn-tie" onclick="placeBet('Tie', this)">TIE</button>
+            <button class="bet-btn btn-tiger" onclick="placeBet('Tiger', this)">TIGER</button>
+        </div>
+        <div class="chips-panel">
+            <button class="chip-btn chip-10 selected-chip" onclick="selectChip(10, this)">10</button>
+            <button class="chip-btn chip-50" onclick="selectChip(50, this)">50</button>
+            <button class="chip-btn chip-100" onclick="selectChip(100, this)">100</button>
+            <button class="chip-btn chip-500" onclick="selectChip(500, this)">500</button>
+        </div>
+        <div id="result" class="result-box">कनेक्ट हो रहा है...</div>
+    </div>
+
+    <script>
+        // यहाँ अपने लाइव क्लाउड बैकएंड सर्वर का URL डालें (जैसे ही आप Render पर होस्ट करेंगे)
+        // अभी टेस्टिंग के लिए यह लोकल सर्वर एड्रेस पर सेट है
+        const SERVER_URL = "http://localhost:3000"; 
+        
+        const socket = io(SERVER_URL, { transports: ['websocket'] });
+        let selectedChipValue = 10, myBetType = null, myBetAmount = 0;
+
+        socket.on('connect', () => { document.getElementById('connection-status').innerText = "🟢 Online"; document.getElementById('result').innerText = "चिप चुनें और दांव लगाएं!"; });
+        socket.on('disconnect', () => { document.getElementById('connection-status').innerText = "🔴 Disconnected"; });
+        socket.on('playerCount', (count) => { document.getElementById('online-players').innerText = `Players: ${count}`; });
+        socket.on('walletUpdate', (newBalance) => { document.getElementById('balance').innerText = newBalance; });
+
+        function selectChip(val, btn) { selectedChipValue = val; document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('selected-chip')); btn.classList.add('selected-chip'); }
+        
+        function placeBet(type, btn) {
+            const currentBalance = parseInt(document.getElementById('balance').innerText);
+            if (currentBalance < selectedChipValue) { alert("कॉइन्स कम हैं!"); return; }
+            myBetType = type; myBetAmount += selectedChipValue;
+            document.querySelectorAll('.bet-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            document.getElementById('result').innerText = `दांव: ${myBetType} (₹${myBetAmount})`;
+            socket.emit('playerBet', { type: myBetType, amount: selectedChipValue });
+        }
+
+        socket.on('timeUpdate', (data) => {
+            const timerDiv = document.getElementById('timer');
+            const betButtons = document.querySelectorAll('.bet-btn');
+            const chipButtons = document.querySelectorAll('.chip-btn');
+            if (data.status === 'betting') {
+                timerDiv.innerText = `Place Bet: ${data.timeLeft}s`;
+                betButtons.forEach(btn => btn.disabled = false);
+                chipButtons.forEach(btn => btn.disabled = false);
+            } else if (data.status === 'showdown') {
+                timerDiv.innerHTML = `<span style="color:#ff4d4d;">Restarting in: ${data.timeLeft}s</span>`;
+                betButtons.forEach(btn => btn.disabled = true);
+                chipButtons.forEach(btn => btn.disabled = true);
+                if (data.timeLeft === 1) {
+                    document.getElementById('dragon-card-inner').classList.remove('flipped');
+                    document.getElementById('tiger-card-inner').classList.remove('flipped');
+                }
+            }
+        });
+
+        function setupCard(id, card) {
+            const el = document.getElementById(id); el.className = `card-front ${card.suit.color}`;
+            el.innerHTML = `<div class="card-corner top-left"><div>${card.face}</div><div>${card.suit.icon}</div></div><div class="card-center-logo">${card.suit.icon}</div><div class="card-corner bottom-right"><div>${card.face}</div><div>${card.suit.icon}</div></div>`;
+        }
+
+        socket.on('gameResult', (data) => {
+            const dInner = document.getElementById('dragon-card-inner');
+            const tInner = document.getElementById('tiger-card-inner');
+            setupCard('dragon-card-front', data.dragonCard); setupCard('tiger-card-front', data.tigerCard);
+            setTimeout(() => { dInner.classList.add('flipped'); tInner.classList.add('flipped'); }, 100);
+            setTimeout(() => {
+                let html = `<div style="color:#ffcc00;font-weight:bold;">WINNER: ${data.winner}</div>`;
+                if (myBetType === data.winner) { document.getElementById('result').innerHTML = html + `<span style="color:#4def4d;">जीत गए! (+₹${myBetAmount})</span>`; }
+                else if (myBetType) { document.getElementById('result').innerHTML = html + `<span style="color:#ff9999;">हार गए! (-₹${myBetAmount})</span>`; }
